@@ -40,17 +40,21 @@ struct MenuView: View {
         }
     }
 
-    @ViewBuilder private var status: some View {
-        if model.config.paused {
-            Text("Syncing is paused")
-        } else if let r = model.lastReport {
-            if let next = model.nextSync {
-                Text("Synced \(r.date, style: .relative) ago · next in \(next, style: .relative)")
+    private var status: some View {
+        TimelineView(.periodic(from: .now, by: 15)) { context in
+            if model.config.paused {
+                Text("Syncing is paused")
+            } else if let r = model.lastReport {
+                let ago = Text(r.date, format: .relative(presentation: .numeric, unitsStyle: .abbreviated))
+                if let next = model.nextSync, next > context.date {
+                    let until = Text(next, format: .relative(presentation: .numeric, unitsStyle: .abbreviated))
+                    Text("Synced \(ago) · next \(until)")
+                } else {
+                    Text("Synced \(ago)")
+                }
             } else {
-                Text("Synced \(r.date, style: .relative) ago")
+                Text("Not synced yet")
             }
-        } else {
-            Text("Not synced yet")
         }
     }
 

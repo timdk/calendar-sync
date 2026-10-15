@@ -4,6 +4,11 @@ Menu bar app that mirrors busy time between calendars as opaque “Busy” block
 using the calendars already synced into macOS Calendar (no third-party access to
 the org accounts needed). Requires macOS 15+ and the Xcode Command Line Tools.
 
+<p align="center">
+  <img src="docs/menu.png" width="380" alt="CalSync menu bar popover">
+  <img src="docs/settings.png" width="480" alt="CalSync settings, Links tab">
+</p>
+
 ## Prerequisites
 
 CalSync only reads and writes the calendars macOS already syncs, through EventKit.
@@ -37,6 +42,7 @@ macOS has synced, so expect some delay for accounts that aren't push.
 ```bash
 ./build.sh            # builds build/CalSync.app
 ./build.sh install    # also copies to ~/Applications and launches it
+./build.sh screenshots  # re-renders the README screenshots with fake calendars
 ```
 
 On first launch, approve the calendar access prompt, then open **Settings…** from

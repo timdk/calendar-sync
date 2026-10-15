@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
+    var height: CGFloat = 620
 
     var body: some View {
         VStack(spacing: 0) {
@@ -13,7 +14,7 @@ struct SettingsView: View {
                 ActivityTab().tabItem { Label("Activity", systemImage: "list.bullet.rectangle") }
             }
         }
-        .frame(width: 640, height: 620)
+        .frame(width: 640, height: height)
     }
 }
 
@@ -196,11 +197,10 @@ private struct LinkCard: View {
         .help(link.bidirectional ? "Mirroring both ways. Click for one way." : "Mirroring one way. Click for both ways.")
     }
 
-    private func detailsLabel(into id: String) -> some View {
-        VStack(alignment: .leading) {
-            Text("Copy titles and join links into \(id.isEmpty ? "this calendar" : model.calendarName(id))")
-            Text("Otherwise it gets “\(model.config.blockerTitle)” blockers.")
-        }
+    // Two plain Texts (no stack) so the toggle styles the second as a subtitle.
+    @ViewBuilder private func detailsLabel(into id: String) -> some View {
+        Text("Copy titles and join links into \(id.isEmpty ? "this calendar" : model.calendarName(id))")
+        Text("Otherwise it gets “\(model.config.blockerTitle)” blockers.")
     }
 }
 

@@ -2,7 +2,13 @@ import SwiftUI
 
 @main
 struct CalSyncApp: App {
-    @State private var model = AppModel()
+    @State private var model = AppModel(demo: Demo.outputDirectory != nil)
+
+    init() {
+        if let dir = Demo.outputDirectory {
+            DispatchQueue.main.async { MainActor.assumeIsolated { Demo.captureScreenshots(to: dir) } }
+        }
+    }
 
     var body: some Scene {
         MenuBarExtra {

@@ -36,7 +36,12 @@ final class AppModel {
 
     var hasAccess: Bool { access == .fullAccess }
 
-    init() {
+    /// Demo mode (README screenshots): fake data, no calendar access, nothing saved.
+    @ObservationIgnored let isDemo: Bool
+
+    init(demo: Bool = false) {
+        isDemo = demo
+        if demo { loadDemoData(); return }
         observers.append(NotificationCenter.default.addObserver(
             forName: .EKEventStoreChanged, object: store, queue: .main
         ) { [weak self] _ in
@@ -170,6 +175,7 @@ final class AppModel {
     }
 
     private func configChanged(from old: SyncConfig) {
+        guard !isDemo else { return }
         config.save()
         preview = nil
         if old.paused != config.paused {

@@ -66,7 +66,7 @@ struct SyncEngine {
 
     /// Alias-aware label for logs and the UI.
     static func label(_ cal: EKCalendar, config: SyncConfig) -> String {
-        config.alias(for: cal.calendarIdentifier).map { "\($0) (\(label(cal)))" } ?? label(cal)
+        config.alias(for: cal.calendarIdentifier).map { "\($0) (\(cal.source.title))" } ?? label(cal)
     }
 
     /// Hosts whose links count as a meeting's join link.
