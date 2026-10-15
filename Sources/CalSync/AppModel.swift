@@ -82,8 +82,21 @@ final class AppModel {
         calendars.first { $0.calendarIdentifier == id }
     }
 
+    /// Calendars grouped by account, in display order.
+    var calendarGroups: [(account: String, calendars: [EKCalendar])] {
+        Dictionary(grouping: calendars, by: { $0.source.title })
+            .sorted { $0.key < $1.key }
+            .map { ($0.key, $0.value) }
+    }
+
+    /// Short name: the alias, else the account name.
     func calendarName(_ id: String) -> String {
-        calendar(id).map(SyncEngine.label) ?? "Missing calendar"
+        calendar(id).map { SyncEngine.shortName($0, config: config) } ?? "Missing calendar"
+    }
+
+    /// Binding-friendly alias accessor; clearing the text removes the alias.
+    func setAlias(_ alias: String, for id: String) {
+        config.aliases[id] = alias.isEmpty ? nil : alias
     }
 
     /// Returns a problem with a link that will stop it syncing, if any.
@@ -91,8 +104,8 @@ final class AppModel {
         if link.sourceID.isEmpty || link.targetID.isEmpty { return "Choose both calendars." }
         if link.sourceID == link.targetID { return "Source and target are the same calendar." }
         guard let s = calendar(link.sourceID), let t = calendar(link.targetID) else { return "A calendar is missing." }
-        if !t.allowsContentModifications { return "\(t.title) is read-only, so blockers can't be written to it." }
-        if link.bidirectional && !s.allowsContentModifications { return "\(s.title) is read-only; make this link one-way." }
+        if !t.allowsContentModifications { return "\(calendarName(link.targetID)) is read-only, so blockers can't be written to it." }
+        if link.bidirectional && !s.allowsContentModifications { return "\(calendarName(link.sourceID)) is read-only; make this link one-way." }
         return nil
     }
 

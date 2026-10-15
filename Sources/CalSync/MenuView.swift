@@ -5,46 +5,44 @@ struct MenuView: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             header
-            Divider()
             if !model.hasAccess {
                 accessPrompt
             } else if model.config.directedPairs.isEmpty {
-                Text("No calendars linked yet.").foregroundStyle(.secondary)
-                Button("Link Calendars…", action: openSettings)
+                emptyState
             } else {
                 pairs
             }
-            if !model.log.isEmpty {
-                Divider()
-                activity
-            }
-            Divider()
+            if !model.log.isEmpty { activity }
             footer
         }
-        .padding(14)
-        .frame(width: 360)
+        .padding(16)
+        .frame(width: 380)
     }
 
+    // MARK: Header
+
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(spacing: 10) {
+            Image(systemName: "calendar.badge.clock")
+                .font(.title2)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.tint)
+                .frame(width: 36, height: 36)
+                .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 9))
+            VStack(alignment: .leading, spacing: 1) {
                 Text("CalSync").font(.headline)
                 status.font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-            if let err = model.lastError {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
-                    .help(err)
-            }
+            statusBadge
         }
     }
 
     @ViewBuilder private var status: some View {
         if model.config.paused {
-            Text("Paused")
+            Text("Syncing is paused")
         } else if let r = model.lastReport {
             if let next = model.nextSync {
                 Text("Synced \(r.date, style: .relative) ago · next in \(next, style: .relative)")
@@ -56,9 +54,26 @@ struct MenuView: View {
         }
     }
 
+    private var statusBadge: some View {
+        let (text, color): (String, Color) =
+            !model.hasAccess ? ("No access", .orange)
+            : model.lastError != nil ? ("Error", .red)
+            : model.config.paused ? ("Paused", .secondary)
+            : ("Active", .green)
+        return Text(text)
+            .font(.caption.weight(.medium))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .foregroundStyle(color)
+            .background(color.opacity(0.15), in: Capsule())
+            .help(model.lastError ?? "")
+    }
+
+    // MARK: Body
+
     private var accessPrompt: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("CalSync needs full calendar access.")
+        card {
+            Label("CalSync needs full calendar access.", systemImage: "lock.shield")
             HStack {
                 Button("Request Access") { Task { await model.requestAccess() } }
                 Button("Open Privacy Settings") { model.openPrivacySettings() }
@@ -66,53 +81,104 @@ struct MenuView: View {
         }
     }
 
+    private var emptyState: some View {
+        card {
+            Text("No calendars linked yet.").foregroundStyle(.secondary)
+            Button("Link Calendars…", action: openSettings)
+                .buttonStyle(.borderedProminent)
+        }
+    }
+
     private var pairs: some View {
         VStack(alignment: .leading, spacing: 6) {
-            ForEach(model.config.directedPairs, id: \.self) { p in
-                let rep = model.lastReport?.pairs.first { $0.pair == p }
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(model.calendarName(p.from))
-                        Text("→ \(model.calendarName(p.to))").foregroundStyle(.secondary)
-                    }
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    Spacer()
-                    if let err = rep?.error {
-                        Text(err).foregroundStyle(.red).multilineTextAlignment(.trailing)
-                    } else if let rep {
-                        Text("\(rep.blockers) blocker\(rep.blockers == 1 ? "" : "s")")
-                            .monospacedDigit().foregroundStyle(.secondary)
-                    }
+            sectionTitle("Mirroring")
+            VStack(spacing: 0) {
+                ForEach(Array(model.config.directedPairs.enumerated()), id: \.element) { i, p in
+                    if i > 0 { Divider().padding(.leading, 10) }
+                    pairRow(p)
                 }
-                .font(.callout)
+            }
+            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+        }
+    }
+
+    private func pairRow(_ p: DirectedPair) -> some View {
+        let rep = model.lastReport?.pairs.first { $0.pair == p }
+        return HStack(spacing: 6) {
+            CalendarDot(color: model.calendar(p.from)?.color)
+            Text(model.calendarName(p.from))
+            Image(systemName: "arrow.right").font(.caption2).foregroundStyle(.tertiary)
+            CalendarDot(color: model.calendar(p.to)?.color)
+            Text(model.calendarName(p.to))
+            if p.copyDetails {
+                Image(systemName: "text.badge.checkmark")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .help("Copies titles and join links")
+            }
+            Spacer(minLength: 8)
+            if let err = rep?.error {
+                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red).help(err)
+            } else if let rep {
+                Text("\(rep.blockers)")
+                    .monospacedDigit()
+                    .font(.caption.weight(.medium))
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 1)
+                    .background(.quaternary, in: Capsule())
+                    .help("\(rep.blockers) event\(rep.blockers == 1 ? "" : "s") mirrored")
             }
         }
+        .lineLimit(1)
+        .truncationMode(.middle)
+        .font(.callout)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
     }
 
     private var activity: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text("Recent activity").font(.caption).foregroundStyle(.secondary)
-            ForEach(model.log.suffix(6).reversed()) { e in
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(e.date, format: .dateTime.hour().minute())
-                        .monospacedDigit().foregroundStyle(.secondary)
-                    Text(e.text)
-                        .foregroundStyle(e.isError ? .red : .primary)
-                        .lineLimit(2)
+        VStack(alignment: .leading, spacing: 6) {
+            sectionTitle("Recent activity")
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(model.log.suffix(5).reversed()) { e in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(e.date, format: .dateTime.hour().minute())
+                            .monospacedDigit().foregroundStyle(.secondary)
+                        Text(e.text)
+                            .foregroundStyle(e.isError ? .red : .primary)
+                            .lineLimit(2)
+                    }
+                    .font(.caption)
                 }
-                .font(.caption)
             }
         }
     }
 
+    // MARK: Footer
+
     private var footer: some View {
-        HStack {
-            Button("Sync Now") { model.sync() }
-                .disabled(!model.hasAccess || model.config.paused)
-            Button(model.config.paused ? "Resume" : "Pause") { model.config.paused.toggle() }
+        HStack(spacing: 8) {
+            Button {
+                model.sync()
+            } label: {
+                Label("Sync Now", systemImage: "arrow.triangle.2.circlepath")
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(!model.hasAccess || model.config.paused)
+
+            Button {
+                model.config.paused.toggle()
+            } label: {
+                Label(model.config.paused ? "Resume" : "Pause",
+                      systemImage: model.config.paused ? "play.fill" : "pause.fill")
+            }
+
             Spacer()
-            Button("Settings…", action: openSettings)
+
+            Button(action: openSettings) {
+                Image(systemName: "gearshape")
+            }
+            .help("Settings")
             Button {
                 NSApp.terminate(nil)
             } label: {
@@ -120,6 +186,22 @@ struct MenuView: View {
             }
             .help("Quit CalSync")
         }
+        .controlSize(.regular)
+    }
+
+    // MARK: Helpers
+
+    private func sectionTitle(_ s: String) -> some View {
+        Text(s.uppercased())
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(.secondary)
+    }
+
+    private func card(@ViewBuilder _ content: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 8, content: content)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
     }
 
     private func openSettings() {

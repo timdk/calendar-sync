@@ -44,11 +44,30 @@ the menu bar icon, add a link between the two calendars, hit **Preview Changes**
 and if it looks right, **Sync Now**. A second preview should show nothing to do. If it
 keeps wanting to recreate blockers, the server is mangling the notes marker.
 
+## Copying meeting details
+
+By default the copies show only the time, as “Busy”. For each direction of a link
+you can turn on **Copy titles and join links into …**. The copy then gets the
+meeting title and its Teams/Zoom/Meet/Webex join link (taken from the invite text
+and unwrapped from Outlook Safe Links). Turn on **Prefix titles with the calendar alias**
+to get titles like `[AMAG] Weekly sync`.
+
+Give each calendar an **alias** in its link card. Exchange calendars are all called
+“Calendar”, so the alias is how you tell them apart in prefixes, the menu and the
+log. Without an alias, CalSync uses the account name.
+
+- Copied titles can be seen by anyone who can view event details in that calendar.
+  EventKit can't mark events private, so only turn this on where that's acceptable.
+- A join link doesn't decide which Teams account joins: Teams uses the account
+  that's active. The prefix tells you which account to switch to before joining.
+
 ## How it syncs
 
 Stateless: each run computes which
 blockers should exist in the look-ahead window, creates the missing ones and deletes
-stale ones. Blocker notes contain only `[calsync] <calendar hash>:<event hash>`.
+stale ones. Blocker notes contain only `[calsync] <calendar hash>:<event hash>`
+(plus the join link when copying details). A copied event whose title or link
+changes is replaced on the next sync.
 Skipped: all-day, free, cancelled, declined, (optionally) tentative events, and
 CalSync's own blockers. Blockers whose link was removed are deleted.
 
